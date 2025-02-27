@@ -4,6 +4,7 @@ import { DrawingCanvas } from './components/DrawingCanvas'
 
 function App() {
   const [dotSize, setDotSize] = useState(4)
+  const [smoothingType, setSmoothingType] = useState<'linear' | 'projected'>('linear')
 
   return (
     <div className="app-container">
@@ -11,7 +12,8 @@ function App() {
         width={800}
         height={600}
         dotSize={dotSize}
-        renderControls={(clearCanvas) => (
+        initSmoothingType={smoothingType}
+        renderControls={(clearCanvas, setSmoothingFn) => (
           <div className="controls">
             <div className="controls-row">
               <label>
@@ -25,6 +27,26 @@ function App() {
                 />
                 {dotSize}px
               </label>
+              <div className="toggle-group">
+                <button 
+                  className={`toggle-button ${smoothingType === 'linear' ? 'active' : ''}`}
+                  onClick={() => {
+                    setSmoothingType('linear');
+                    setSmoothingFn('linear');
+                  }}
+                >
+                  Linear
+                </button>
+                <button 
+                  className={`toggle-button ${smoothingType === 'projected' ? 'active' : ''}`}
+                  onClick={() => {
+                    setSmoothingType('projected');
+                    setSmoothingFn('projected');
+                  }}
+                >
+                  Bezier
+                </button>
+              </div>
               <button 
                 onClick={clearCanvas}
                 className="clear-button"

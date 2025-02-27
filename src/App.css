@@ -102,3 +102,32 @@ canvas {
   max-height: 100%;
   object-fit: contain;
 }
+
+.toggle-group {
+  display: inline-flex;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toggle-button {
+  padding: 8px 16px;
+  border: none;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.toggle-button:not(:last-child) {
+  border-right: 2px solid #ccc;
+}
+
+.toggle-button.active {
+  background: #007bff;
+  color: white;
+}
+
+.toggle-button:hover:not(.active) {
+  background: #f0f0f0;
+}
