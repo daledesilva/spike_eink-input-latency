@@ -1,22 +1,25 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-
-interface Point {
-    x: number;
-    y: number;
-}
+import { Point } from '../lineInterpolation/types';
+import { DrawLinearLine } from '../lineInterpolation/linearLine';
+import { DrawProjectBezierLine } from '../lineInterpolation/projectedBezierLine';
+import { DrawChaikinLine } from '../lineInterpolation/chaikinLine';
 
 interface DrawingCanvasProps {
     width?: number;
     height?: number;
-    dotSize?: number;
-    initSmoothingType?: 'linear' | 'projected';
-    renderControls?: (clearFn: () => void, setSmoothingFn: (type: string) => void) => React.ReactNode;
+    dotRadius?: number;
+    lineWidth?: number;
+    showDots?: boolean;
+    initSmoothingType?: 'linear' | 'projected' | 'chaikin';
+    renderControls?: (clearFn: () => void, setSmoothingFn: (type: 'linear' | 'projected' | 'chaikin') => void) => React.ReactNode;
 }
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
-    width: defaultWidth = 800,
-    height: defaultHeight = 600,
-    dotSize = 4,
+    width = 800,
+    height = 600,
+    dotRadius = 4,
+    lineWidth = 2,
+    showDots = true,
     initSmoothingType = 'linear',
     renderControls
 }) => {
@@ -24,56 +27,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const lastPointRef = useRef<Point | null>(null);
     const previousControlPointRef = useRef<Point | null>(null);
-    const smoothingTypeRef = useRef<'linear' | 'projected'>(initSmoothingType);
-    const [dimensions, setDimensions] = useState({ width: defaultWidth, height: defaultHeight });
+    const smoothingTypeRef = useRef<'linear' | 'projected' | 'chaikin'>(initSmoothingType);
+    const [dimensions, setDimensions] = useState({ width, height });
 
-    // Smoothing functions
-    const linearDraw = (ctx: CanvasRenderingContext2D, start: Point, end: Point) => {
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-    };
-
-    const bezierProjected = (ctx: CanvasRenderingContext2D, start: Point, end: Point, previous: Point | null): Point => {
-        const controlPoint = previous ? {
-            x: start.x + (start.x - previous.x) * 0.5,
-            y: start.y + (start.y - previous.y) * 0.5
-        } : {
-            x: (start.x + end.x) / 2,
-            y: (start.y + end.y) / 2
-        };
-
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.quadraticCurveTo(
-            controlPoint.x,
-            controlPoint.y,
-            end.x,
-            end.y
-        );
-        ctx.stroke();
-
-        // Draw control point visualization (in red)
-        ctx.save();
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 1;
-        
-        // Draw lines from control point to endpoints
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(controlPoint.x, controlPoint.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-        
-        // Draw control point circle
-        ctx.beginPath();
-        ctx.arc(controlPoint.x, controlPoint.y, 4, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-
-        return controlPoint;
-    };
+    // Smoothing functions have been moved to separate files
 
     const updateDimensions = useCallback(() => {
         if (!containerRef.current) return;
@@ -82,7 +39,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
         
-        const aspectRatio = defaultWidth / defaultHeight;
+        const aspectRatio = width / height;
         let newWidth = containerWidth;
         let newHeight = containerWidth / aspectRatio;
         
@@ -95,7 +52,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             width: Math.floor(newWidth),
             height: Math.floor(newHeight)
         });
-    }, [defaultWidth, defaultHeight]);
+    }, [width, height]);
 
     useEffect(() => {
         updateDimensions();
@@ -117,7 +74,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         lastPointRef.current = null;
     }, [dimensions]);
 
-    const setSmoothingType = (type: 'linear' | 'projected') => {
+    const setSmoothingType = (type: 'linear' | 'projected' | 'chaikin') => {
         smoothingTypeRef.current = type;
     };
 
@@ -133,7 +90,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         ctx.fillStyle = 'black';
         ctx.strokeStyle = 'black';
         ctx.lineCap = 'round';
-        ctx.lineWidth = dotSize / 2;
+        ctx.lineWidth = lineWidth;
 
         const drawPoint = (x: number, y: number) => {
             const newPoint = { x, y };
@@ -141,10 +98,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             if (lastPointRef.current) {
                 // Draw the actual curve/line (in black)
                 ctx.strokeStyle = 'black';
-                ctx.lineWidth = dotSize / 2;
+                ctx.lineWidth = lineWidth;
 
                 if (smoothingTypeRef.current === 'projected') {
-                    const controlPoint = bezierProjected(
+                    const controlPoint = DrawProjectBezierLine(
+                        ctx,
+                        lastPointRef.current,
+                        newPoint,
+                        previousControlPointRef.current
+                    );
+                    previousControlPointRef.current = controlPoint;
+                } else if (smoothingTypeRef.current === 'chaikin') {
+                    const controlPoint = DrawChaikinLine(
                         ctx,
                         lastPointRef.current,
                         newPoint,
@@ -152,20 +117,22 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                     );
                     previousControlPointRef.current = controlPoint;
                 } else {
-                    linearDraw(ctx, lastPointRef.current, newPoint);
+                    DrawLinearLine(ctx, lastPointRef.current, newPoint);
                 }
                 
                 // Draw the endpoint dot
                 ctx.fillStyle = 'black';
                 ctx.beginPath();
-                ctx.arc(x, y, dotSize, 0, Math.PI * 2);
-                ctx.fill();
+                if(showDots) {
+                    ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
                 
                 lastPointRef.current = newPoint;
             } else {
                 // First point of stroke
                 ctx.beginPath();
-                ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+                ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
                 ctx.fill();
                 lastPointRef.current = newPoint;
                 previousControlPointRef.current = null;
@@ -201,7 +168,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             canvas.removeEventListener('pointerdown', handlePointerDown);
             canvas.removeEventListener('pointermove', handlePointerMove);
         };
-    }, [dotSize, clearCanvas, dimensions]);
+    }, [lineWidth, dotRadius, clearCanvas, dimensions]);
 
     return (
         <div>
