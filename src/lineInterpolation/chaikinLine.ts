@@ -44,6 +44,9 @@ export const DrawChaikinLine = (
         currentPoints = subdividePoints(currentPoints);
     }
     
+    // Save current context state
+    ctx.save();
+    
     // Draw the smoothed curve
     ctx.beginPath();
     ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
@@ -52,30 +55,9 @@ export const DrawChaikinLine = (
     }
     ctx.stroke();
     
-    // Draw control points visualization (in blue)
-    ctx.save();
-    ctx.strokeStyle = 'blue';
-    ctx.lineWidth = 1;
-    
-    // Draw original polyline
-    ctx.beginPath();
-    ctx.setLineDash([5, 5]); // Make the original line dashed
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
-    }
-    ctx.stroke();
-    
-    // Draw points
-    ctx.setLineDash([]); // Reset dash
-    points.forEach(point => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-        ctx.stroke();
-    });
-    
+    // Restore context state
     ctx.restore();
     
-    // Return the last control point for future reference
-    return points[points.length - 2] || start;
+    // Return the end point for future reference
+    return end;
 }; 

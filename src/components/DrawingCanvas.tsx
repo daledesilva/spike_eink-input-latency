@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { DrawLinearLine } from '../lineInterpolation/linearLine';
-import { DrawProjectBezierLine } from '../lineInterpolation/projectedBezierLine';
 import { DrawChaikinLine } from '../lineInterpolation/chaikinLine';
 import { getLineWidth, getShowDots, getSmoothingType } from '../atoms';
 import { DrawingControls } from './DrawingControls';
@@ -154,14 +153,7 @@ const drawLine = (ctx: CanvasRenderingContext2D, prevPoint: Point, newPoint: Poi
     ctx.lineCap = 'round';
     ctx.lineWidth = lineWidth;
 
-    if (smoothingType === 'projected') {
-        DrawProjectBezierLine(
-            ctx,
-            prevPoint,
-            newPoint,
-            prevPoint
-        );
-    } else if (smoothingType === 'chaikin') {
+    if (smoothingType === 'chaikin') {
         DrawChaikinLine(
             ctx,
             prevPoint,

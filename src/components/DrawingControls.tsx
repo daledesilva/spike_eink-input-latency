@@ -53,14 +53,6 @@ export function DrawingControls({ onClearCanvas: clearCanvas }: DrawingControlsP
                         Linear
                     </button>
                     <button
-                        className={`toggle-button ${smoothingType === 'projected' ? 'active' : ''}`}
-                        onClick={() => {
-                            setSmoothingType('projected');
-                        }}
-                    >
-                        Bezier
-                    </button>
-                    <button
                         className={`toggle-button ${smoothingType === 'chaikin' ? 'active' : ''}`}
                         onClick={() => {
                             setSmoothingType('chaikin');

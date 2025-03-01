@@ -14,7 +14,7 @@ export function getShowDots() {
     return defaultStore.get(showDotsAtom);
 };
 
-export const smoothingTypeAtom = atom<'linear' | 'projected' | 'chaikin'>('linear'); 
+export const smoothingTypeAtom = atom<'linear' | 'chaikin'>('linear'); 
 export function getSmoothingType() {
     const defaultStore = getDefaultStore();
     return defaultStore.get(smoothingTypeAtom);
