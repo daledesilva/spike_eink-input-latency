@@ -8,7 +8,7 @@ export function getLineWidth() {
     return defaultStore.get(lineWidthAtom);
 };
 
-export const showDotsAtom = atom(false);
+export const showDotsAtom = atom(true);
 export function getShowDots() {
     const defaultStore = getDefaultStore();
     return defaultStore.get(showDotsAtom);

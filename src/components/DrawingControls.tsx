@@ -42,7 +42,7 @@ export function DrawingControls({ onClearCanvas: clearCanvas }: DrawingControlsP
                 </button>
             </div>
 
-            <div className="controls-row">
+            {/* <div className="controls-row">
                 <div className="toggle-group">
                     <button
                         className={`toggle-button ${smoothingType === 'linear' ? 'active' : ''}`}
@@ -61,7 +61,7 @@ export function DrawingControls({ onClearCanvas: clearCanvas }: DrawingControlsP
                         Chaikin
                     </button>
                 </div>
-            </div>
+            </div> */}
         </div>
     );
 }

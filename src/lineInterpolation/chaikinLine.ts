@@ -1,9 +1,9 @@
-import { Point } from './types';
+import { Coord } from './types';
 
-const subdividePoints = (points: Point[]): Point[] => {
+const subdividePoints = (points: Coord[]): Coord[] => {
     if (points.length < 2) return points;
     
-    const newPoints: Point[] = [];
+    const newPoints: Coord[] = [];
     
     for (let i = 0; i < points.length - 1; i++) {
         const p0 = points[i];
@@ -28,13 +28,13 @@ const subdividePoints = (points: Point[]): Point[] => {
 
 export const DrawChaikinLine = (
     ctx: CanvasRenderingContext2D, 
-    start: Point, 
-    end: Point, 
-    previous: Point | null,
+    start: Coord, 
+    end: Coord, 
+    previous: Coord | null,
     iterations: number = 4
-): Point => {
+): Coord => {
     // Create initial points array
-    const points: Point[] = [];
+    const points: Coord[] = [];
     if (previous) points.push(previous);
     points.push(start, end);
     

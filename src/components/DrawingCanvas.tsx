@@ -3,19 +3,29 @@ import { DrawLinearLine } from '../lineInterpolation/linearLine';
 import { DrawChaikinLine } from '../lineInterpolation/chaikinLine';
 import { getLineWidth, getShowDots, getSmoothingType } from '../atoms';
 import { DrawingControls } from './DrawingControls';
+import { DataTable } from './DataTable';
+import { Coord } from '../lineInterpolation/types';
 
 interface DrawingCanvasProps {
     width?: number;
     height?: number;
 }
 
+export interface Point {
+    coord: Coord;
+    timestamp: number;
+}
+
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     width = 800,
-    height = 600,
+    height = 500,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width, height });
+    const pointGroupsRef = useRef<Point[][]>([]);
+    const [pointGroupsId, setPointGroupsId] = useState<number>(0); // Controls when the screen refreshes
+    const groupIndexRef = useRef<number>(-1);
 
     // Smoothing functions have been moved to separate files
 
@@ -56,6 +66,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         clearCanvas(canvas, dimensions.width, dimensions.height);
 
         const handlePointerDown = (e: PointerEvent) => {
+            groupIndexRef.current++;
             prevPoint = null;
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -71,34 +82,76 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             addToLine(canvas, { x, y });
+            // force a refresh to update the DataTable
+            setPointGroupsId((prevId) => prevId + 1);
         };
         canvas.addEventListener('pointerdown', handlePointerDown);
         canvas.addEventListener('pointermove', handlePointerMove);
-        
         return () => {
             canvas.removeEventListener('pointerdown', handlePointerDown);
             canvas.removeEventListener('pointermove', handlePointerMove);
         };
     }, [dimensions]);
 
+    const addToLine = (canvas: HTMLCanvasElement | null, coord: Coord) => {
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const newPoint: Point = {
+            coord: coord,
+            timestamp: performance.now()
+        };
+
+        // If the current group index is greater than the number of groups, start a new group to cater for it
+        if(groupIndexRef.current+1 > pointGroupsRef.current.length) {
+            // Start a new group (a new stroke)
+            pointGroupsRef.current.push([]);
+        }
+        // Add the point to the group
+        pointGroupsRef.current[groupIndexRef.current].push(newPoint);
+
+        const showDots = getShowDots();
+
+        if (prevPoint) {
+            drawLine(ctx, prevPoint.coord, coord);
+        }
+        if (showDots) {
+            drawPoint(ctx, coord);
+        }
+        prevPoint = newPoint;
+    };
+
+    const clearCanvasAndPoints = useCallback(() => {
+        clearCanvas(canvasRef.current, dimensions.width, dimensions.height);
+        pointGroupsRef.current = [];
+        groupIndexRef.current = -1;
+        setPointGroupsId((prevId) => prevId + 1);
+    }, [dimensions]);
+
     return (
-        <div>
-            <DrawingControls
-                onClearCanvas={() => {
-                    clearCanvas(canvasRef.current, dimensions.width, dimensions.height)
-                }}
-            />
+        <div className="drawing-ui-container">
+            <DrawingControls onClearCanvas={clearCanvasAndPoints} />
             <div ref={containerRef} className="canvas-container">
                 <canvas
                     ref={canvasRef}
                     width={dimensions.width}
                     height={dimensions.height}
                     style={{
-                        border: '3px solid black',
-                        borderRadius: '8px',
+                        width: dimensions.width,
+                        height: dimensions.height,
+                        // Without this, it cuts drawing short on Boox Go 10.3 tablet
                         touchAction: 'none',
                     }}
                 />
+            </div>
+            <div className="data-table-container">
+                {pointGroupsRef.current.map((points, index) => (
+                    <DataTable
+                        points={points}
+                        key={pointGroupsId + index}
+                    />
+                ))}
             </div>
         </div>
     );
@@ -122,30 +175,9 @@ function clearCanvas(canvas: HTMLCanvasElement | null, width: number, height: nu
 
 
 
-interface Point {
-    x: number;
-    y: number;
-}
 let prevPoint: Point | null = null;
 
-const addToLine = (canvas: HTMLCanvasElement | null, newPoint: Point) => {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const showDots = getShowDots();
-
-    if (prevPoint) {
-        drawLine(ctx, prevPoint, newPoint);
-    }
-    if (showDots) {
-        drawPoint(ctx, newPoint);
-    }
-    prevPoint = newPoint;
-};
-
-
-const drawLine = (ctx: CanvasRenderingContext2D, prevPoint: Point, newPoint: Point) => {
+const drawLine = (ctx: CanvasRenderingContext2D, prevCoord: Coord, newCoord: Coord) => {
 
     const smoothingType = getSmoothingType();
     const lineWidth = getLineWidth();
@@ -156,22 +188,22 @@ const drawLine = (ctx: CanvasRenderingContext2D, prevPoint: Point, newPoint: Poi
     if (smoothingType === 'chaikin') {
         DrawChaikinLine(
             ctx,
-            prevPoint,
-            newPoint,
-            prevPoint
+            prevCoord,
+            newCoord,
+            prevCoord
         );
     } else {
-        DrawLinearLine(ctx, prevPoint, newPoint);
+        DrawLinearLine(ctx, prevCoord, newCoord);
     }
 
 };
 
 
-const drawPoint = (ctx: CanvasRenderingContext2D, point: Point) => {
-    const dotRadius = getLineWidth() * 2;
+const drawPoint = (ctx: CanvasRenderingContext2D, coord: Coord) => {
+    const dotRadius = getLineWidth();
 
     ctx.fillStyle = 'black';
     ctx.beginPath();
-    ctx.arc(point.x, point.y, dotRadius, 0, Math.PI * 2);
+    ctx.arc(coord.x, coord.y, dotRadius, 0, Math.PI * 2);
     ctx.fill();
 }
