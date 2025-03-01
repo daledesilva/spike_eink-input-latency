@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { DrawLinearLine } from '../lineInterpolation/linearLine';
 import { DrawChaikinLine } from '../lineInterpolation/chaikinLine';
-import { getLineWidth, getShowDots, getSmoothingType } from '../atoms';
+import { getLineWidth, getShowDots, getSmoothingType, getIsHighFreq, isHighFreqAtom } from '../atoms';
 import { DrawingControls } from './DrawingControls';
 import { DataTable } from './DataTable';
 import { Coord } from '../lineInterpolation/types';
@@ -16,6 +16,8 @@ export interface Point {
     timestamp: number;
 }
 
+let dataTableInterval: number | undefined;
+
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     width = 800,
     height = 500,
@@ -26,8 +28,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const pointGroupsRef = useRef<Point[][]>([]);
     const [pointGroupsId, setPointGroupsId] = useState<number>(0); // Controls when the screen refreshes
     const groupIndexRef = useRef<number>(-1);
-
-    // Smoothing functions have been moved to separate files
+    
 
     const updateDimensions = useCallback(() => {
         if (!containerRef.current) return;
@@ -68,22 +69,24 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         const handlePointerDown = (e: PointerEvent) => {
             groupIndexRef.current++;
             prevPoint = null;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            addToLine(canvas, { x, y });
+            addToLine(canvas, e);
         };
         const handlePointerMove = (e: PointerEvent) => {
             if (e.buttons !== 1) {
                 prevPoint = null;
                 return;
             }
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            addToLine(canvas, { x, y });
-            // force a refresh to update the DataTable
-            setPointGroupsId((prevId) => prevId + 1);
+            const isHighFreq = getIsHighFreq();
+            if(isHighFreq) {
+                const coalescedEvents = e.getCoalescedEvents();
+                for (let coalescedEvent of coalescedEvents) {
+                    addToLine(canvas, coalescedEvent);
+                }
+            } else {
+                addToLine(canvas, e);
+            }
+
+            scheduleDataTableRefresh();
         };
         canvas.addEventListener('pointerdown', handlePointerDown);
         canvas.addEventListener('pointermove', handlePointerMove);
@@ -93,14 +96,29 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         };
     }, [dimensions]);
 
-    const addToLine = (canvas: HTMLCanvasElement | null, coord: Coord) => {
+
+    function scheduleDataTableRefresh() {
+        if(dataTableInterval) clearInterval(dataTableInterval);
+        dataTableInterval = setInterval(() => {
+            // force a refresh to update the DataTable
+            setPointGroupsId((prevId) => prevId + 1);
+        }, 2000);
+    };
+
+    const addToLine = (canvas: HTMLCanvasElement | null, e: PointerEvent) => {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
+        const rect = canvas.getBoundingClientRect();
+        const coord: Coord = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+
         const newPoint: Point = {
             coord: coord,
-            timestamp: performance.now()
+            timestamp: e.timeStamp, //performance.now()
         };
 
         // If the current group index is greater than the number of groups, start a new group to cater for it

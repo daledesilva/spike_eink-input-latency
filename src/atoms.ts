@@ -19,3 +19,9 @@ export function getSmoothingType() {
     const defaultStore = getDefaultStore();
     return defaultStore.get(smoothingTypeAtom);
 };
+
+export const isHighFreqAtom = atom(true);
+export function getIsHighFreq() {
+    const defaultStore = getDefaultStore();
+    return defaultStore.get(isHighFreqAtom);
+};

@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import { lineWidthAtom, showDotsAtom, smoothingTypeAtom } from '../atoms';
+import { lineWidthAtom, showDotsAtom, smoothingTypeAtom, isHighFreqAtom } from '../atoms';
 
 interface DrawingControlsProps {
     onClearCanvas: () => void;
@@ -8,6 +8,7 @@ interface DrawingControlsProps {
 export function DrawingControls({ onClearCanvas: clearCanvas }: DrawingControlsProps) {
     const [lineWidth, setLineWidth] = useAtom(lineWidthAtom);
     const [showDots, setShowDots] = useAtom(showDotsAtom);
+    const [isHighFreq, setIsHighFreq] = useAtom(isHighFreqAtom);
     const [smoothingType, setSmoothingType] = useAtom(smoothingTypeAtom);
 
     return (
@@ -31,6 +32,16 @@ export function DrawingControls({ onClearCanvas: clearCanvas }: DrawingControlsP
                         checked={showDots}
                         onChange={(e) => {
                             setShowDots(e.target.checked);
+                        }}
+                    />
+                </label>
+                <label>
+                    Higher Freq:
+                    <input
+                        type="checkbox"
+                        checked={isHighFreq}
+                        onChange={(e) => {
+                            setIsHighFreq(e.target.checked);
                         }}
                     />
                 </label>
